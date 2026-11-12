@@ -1,42 +1,60 @@
-import { useState, useEffect } from 'react';
-import { useDispatch, checkSession, logout } from './api/client';
+import { useState, useEffect, useMemo } from 'react';
+import { LayoutDashboard, Package, Users, Map, Sparkles, AlertTriangle, Truck, RefreshCw, Lock, Loader2 } from 'lucide-react';
+import { useDispatch, checkSession, logout, refresh, getExceptions, relTime } from './api/client';
 import { Dashboard, Orders, Drivers, Tracking, AgentConsole, Exceptions, PasscodeScreen } from './pages/Pages.jsx';
 
 const PAGES = {
-  Dashboard: [Dashboard, '▦', 'Overview of live operations'],
-  Orders: [Orders, '☰', 'Create and assign delivery orders'],
-  Drivers: [Drivers, '●', 'Driver availability and load'],
-  'Live Tracking': [Tracking, '➤', 'Simulated GPS and routes'],
-  'Agent Console': [AgentConsole, '✦', 'Talk to the dispatch agent'],
-  Exceptions: [Exceptions, '⚠', 'Delays and driver issues to review'],
+  Dashboard: [Dashboard, LayoutDashboard, 'Live overview of orders, drivers and deliveries'],
+  Orders: [Orders, Package, 'Create, assign and manage delivery orders'],
+  Drivers: [Drivers, Users, 'Roster, availability and current load'],
+  'Live Tracking': [Tracking, Map, 'Follow active deliveries on the map'],
+  'Agent Console': [AgentConsole, Sparkles, 'Ask the AI dispatch agent'],
+  Exceptions: [Exceptions, AlertTriangle, 'Delays and issues that need a decision'],
 };
 
 export default function App() {
   const [page, setPage] = useState('Dashboard');
-  const { alerts, authed } = useDispatch();
-  const [now, setNow] = useState(new Date());
-  useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  const s = useDispatch();
+  const { authed, syncing, syncError, lastSync } = s;
+  const [, tick] = useState(0);
+
   useEffect(() => { checkSession(); }, []);
-  if (authed === null) return <div className="lock"><p className="muted">Loading…</p></div>;
+  useEffect(() => {
+    if (!authed) return undefined;
+    refresh();
+    const poll = setInterval(refresh, 10000);
+    const clock = setInterval(() => tick((n) => n + 1), 5000);
+    return () => { clearInterval(poll); clearInterval(clock); };
+  }, [authed]);
+  const exceptionCount = useMemo(() => getExceptions(s).length, [s.orders, s.deliveries, s.events]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (authed === null) return <div className="boot"><Loader2 size={20} className="spin" /></div>;
   if (!authed) return <PasscodeScreen />;
   const [Page, , sub] = PAGES[page];
+
   return (
     <div className="app">
-      <nav>
-        <div className="brand"><span className="logo">🚚</span><div><b>Dispatch Agent</b><small>AI delivery control</small></div></div>
-        {Object.entries(PAGES).map(([p, [, icon]]) => (
-          <button key={p} className={p === page ? 'active' : ''} onClick={() => setPage(p)}>
-            <span className="ni">{icon}</span>{p}{p === 'Exceptions' && alerts.length > 0 && <span className="count">{alerts.length}</span>}
-          </button>
-        ))}
-        <div className="navfoot"><span>Prototype · mock data</span><button className="ghost lockbtn" onClick={logout}>🔒 Lock</button></div>
+      <nav className="side">
+        <div className="brand"><span className="logo"><Truck size={18} /></span><div><b>Dispatch Agent</b><small>Chennai operations</small></div></div>
+        <div className="nav-items">
+          {Object.entries(PAGES).map(([p, [, Icon]]) => (
+            <button key={p} className={p === page ? 'on' : ''} onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined}>
+              <Icon size={17} strokeWidth={1.9} /><span>{p}</span>
+              {p === 'Exceptions' && exceptionCount > 0 && <em>{exceptionCount}</em>}
+            </button>
+          ))}
+        </div>
+        <button className="nav-lock" onClick={logout}><Lock size={15} /><span>Lock</span></button>
       </nav>
       <div className="content">
-        <header>
-          <div><h2>{page}</h2><p className="muted">{sub}</p></div>
-          <div className="live"><span className="ldot" />Live · {now.toLocaleTimeString()}</div>
+        <header className="top">
+          <div><h1>{page}</h1><p>{sub}</p></div>
+          <div className="sync">
+            {syncError ? <span className="sync-err" title={syncError}>Sync failed</span> : <span className="muted">{lastSync ? `Updated ${relTime(lastSync)}` : 'Connecting…'}</span>}
+            <button className="icon-btn" onClick={refresh} disabled={syncing} aria-label="Refresh data" title="Refresh"><RefreshCw size={15} className={syncing ? 'spin' : ''} /></button>
+          </div>
         </header>
-        <main><Page /></main>
+        <main className="page"><Page go={setPage} /></main>
       </div>
     </div>
   );
