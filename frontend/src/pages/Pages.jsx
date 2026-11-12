@@ -1,5 +1,31 @@
 import { useState } from 'react';
-import { useDispatch, createOrder, assignOrder, resolveAlert, askAgent, approxKm } from '../api/client';
+import { useDispatch, createOrder, assignOrder, resolveAlert, askAgent, approxKm, login } from '../api/client';
+
+export function PasscodeScreen() {
+  const { authError } = useDispatch();
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const submit = async (e) => {
+    e.preventDefault(); if (!code || busy) return;
+    setBusy(true); setErr('');
+    try { await login(code); } catch (x) { setErr(x.message); setCode(''); setBusy(false); }
+  };
+  const shown = err || authError;
+  return (
+    <div className="lock">
+      <form className="card lockcard" onSubmit={submit}>
+        <span className="logo">🚚</span>
+        <h2>Dispatch Agent</h2>
+        <p className="muted">Enter the team passcode to continue.</p>
+        <input type="password" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Passcode" aria-label="Passcode"
+          aria-invalid={Boolean(shown)} autoComplete="current-password" autoFocus disabled={busy} />
+        {shown && <p className="lockerr" role="alert">{shown}</p>}
+        <button type="submit" disabled={busy || !code}>{busy ? 'Checking…' : 'Unlock'}</button>
+      </form>
+    </div>
+  );
+}
 import { Badge, Kpi, MapView, Avatar } from '../components';
 
 export function Dashboard() {

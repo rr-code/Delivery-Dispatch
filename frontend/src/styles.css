@@ -41,4 +41,10 @@ table{width:100%;border-collapse:collapse;font-size:14px}th{color:var(--muted);f
 .alert{padding:12px;margin-bottom:8px;border-radius:10px;background:var(--bg);border-left:3px solid var(--warn);display:flex;flex-direction:column;gap:6px;font-size:14px}.alert.driver_unavailable{border-color:var(--bad)}.alert p{margin:0}.alert code{font-size:12px;color:var(--muted);word-break:break-all}
 .chat{height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:12px;padding:4px}.msg{padding:10px 14px;border-radius:14px;max-width:85%;font-size:14px;line-height:1.4}
 .msg.agent{background:var(--bg);align-self:flex-start;border-bottom-left-radius:4px}.msg.you{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
-@media(max-width:860px){.app{flex-direction:column}nav{width:auto;height:auto;position:static;flex-direction:row;flex-wrap:wrap}.brand,.navfoot{display:none}.grid2{grid-template-columns:1fr}header,main{padding-left:16px;padding-right:16px}}
+.lock{min-height:100vh;display:grid;place-items:center;padding:16px}
+.lockcard{width:100%;max-width:360px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:32px 28px}
+.lockcard h2{margin:4px 0 0;font-size:20px}.lockcard .logo{width:52px;height:52px;font-size:26px;border-radius:14px}
+.lockcard input,.lockcard button{width:100%}.lockcard input{text-align:center;letter-spacing:.12em}
+.lockerr{margin:0;color:var(--bad);font-size:13px}button:disabled{opacity:.55;cursor:default;filter:none}
+.lockbtn{display:block;width:100%;margin-top:8px;padding:7px 10px;font-size:13px}
+@media(max-width:860px){.app{flex-direction:column}nav{width:auto;height:auto;position:static;flex-direction:row;flex-wrap:wrap}.brand,.navfoot span{display:none}.navfoot{margin:0;padding:0}.lockbtn{margin:0;width:auto}.grid2{grid-template-columns:1fr}header,main{padding-left:16px;padding-right:16px}}

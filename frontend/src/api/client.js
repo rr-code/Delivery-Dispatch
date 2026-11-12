@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { drivers, orders, alerts } from './mockData';
 
-// Backend base URL. Unused while the mock store below is active.
+// Backend base URL. Used for passcode login; the pages below still use the mock store.
 export const API_URL = import.meta.env.VITE_API_URL || '';
 
-let state = { drivers: [...drivers], orders: [...orders], alerts: [...alerts], log: [] };
+// authed: null = checking, false = show passcode screen, true = unlocked
+let state = { drivers: [...drivers], orders: [...orders], alerts: [...alerts], log: [], authed: null, authError: '' };
 const subs = new Set();
 const emit = (patch) => { state = { ...state, ...patch }; subs.forEach((f) => f(state)); };
 
@@ -57,4 +58,57 @@ export async function askAgent(text) {
   else if (t.includes('delay')) { tool = 'get_delayed_deliveries'; reply = 'Order O2 is delayed by about 12 minutes.'; }
   emit({ log: [...state.log, { tool, args: { query: text }, result: 'mock response' }] });
   return reply;
+}
+
+// ---- Passcode auth ----
+// The passcode is checked only by the backend (POST /api/auth/login). It returns a signed session
+// token, kept in localStorage and sent as "Authorization: Bearer <token>" on API calls.
+const TOKEN_KEY = 'dispatch_session';
+const token = {
+  get() { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } },
+  set(v) { try { if (v) localStorage.setItem(TOKEN_KEY, v); else localStorage.removeItem(TOKEN_KEY); } catch { /* storage blocked */ } },
+};
+
+async function api(path, { method = 'GET', body } = {}) {
+  if (!API_URL) throw new Error('VITE_API_URL is not set. Add it to frontend/.env.local and restart Vite.');
+  const headers = { 'Content-Type': 'application/json' };
+  const t = token.get();
+  if (t) headers.Authorization = 'Bearer ' + t;
+  let res;
+  try {
+    res = await fetch(API_URL.replace(/\/+$/, '') + path, { method, headers, body: body && JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+  } catch (e) {
+    throw new Error(e?.name === 'TimeoutError' ? 'The server took too long to respond. Please try again.' : 'Could not reach the server. Is the backend running?');
+  }
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = new Error(json?.error || 'Request failed (HTTP ' + res.status + ').');
+    err.status = res.status;
+    throw err;
+  }
+  return json?.data;
+}
+
+export async function login(passcode) {
+  if (!passcode) throw new Error('Please enter the passcode.');
+  const data = await api('/api/auth/login', { method: 'POST', body: { passcode } });
+  token.set(data.token);
+  emit({ authed: true, authError: '' });
+}
+
+export function logout() {
+  token.set(null);
+  emit({ authed: false, authError: '' });
+}
+
+// On startup: unlock straight away if the saved token is still valid.
+export async function checkSession() {
+  if (!token.get()) return emit({ authed: false });
+  try {
+    await api('/api/auth/session');
+    emit({ authed: true });
+  } catch (e) {
+    if (e.status === 401) token.set(null);
+    emit({ authed: false, authError: e.status === 401 ? 'Your session has expired. Please enter the passcode again.' : e.message });
+  }
 }

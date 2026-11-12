@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useDispatch } from './api/client';
-import { Dashboard, Orders, Drivers, Tracking, AgentConsole, Exceptions } from './pages/Pages.jsx';
+import { useDispatch, checkSession, logout } from './api/client';
+import { Dashboard, Orders, Drivers, Tracking, AgentConsole, Exceptions, PasscodeScreen } from './pages/Pages.jsx';
 
 const PAGES = {
   Dashboard: [Dashboard, '▦', 'Overview of live operations'],
@@ -13,9 +13,12 @@ const PAGES = {
 
 export default function App() {
   const [page, setPage] = useState('Dashboard');
-  const { alerts } = useDispatch();
+  const { alerts, authed } = useDispatch();
   const [now, setNow] = useState(new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { checkSession(); }, []);
+  if (authed === null) return <div className="lock"><p className="muted">Loading…</p></div>;
+  if (!authed) return <PasscodeScreen />;
   const [Page, , sub] = PAGES[page];
   return (
     <div className="app">
@@ -26,7 +29,7 @@ export default function App() {
             <span className="ni">{icon}</span>{p}{p === 'Exceptions' && alerts.length > 0 && <span className="count">{alerts.length}</span>}
           </button>
         ))}
-        <div className="navfoot">Prototype · mock data</div>
+        <div className="navfoot"><span>Prototype · mock data</span><button className="ghost lockbtn" onClick={logout}>🔒 Lock</button></div>
       </nav>
       <div className="content">
         <header>
