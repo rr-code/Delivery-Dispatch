@@ -1,0 +1,14 @@
+{
+  "services": {
+    "backend": {
+      "root": "backend/"
+    },
+    "frontend": {
+      "root": "frontend/"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}
